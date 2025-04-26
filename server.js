@@ -60,6 +60,42 @@ app.get('/api/pagamentos', verifyToken, async (req, res) => {
 io.on('connection', (socket) => {
   console.log('Cliente conectado ao socket');
 });
+// Novo modelo para pedidos de instalação
+const Pedido = mongoose.model('Pedido', new mongoose.Schema({
+  nome: String,
+  telefone: String,
+  tipo_camera: String,
+  quantidade: Number,
+  cidade: String,
+  distancia: String,
+  valor_instalacao: String,
+  valor_transporte: String,
+  total_estimado: String,
+  data_criacao: { type: Date, default: Date.now }
+}));
+
+// Nova rota para receber pedidos
+app.post('/api/pedidos', async (req, res) => {
+  try {
+    const pedido = new Pedido(req.body);
+    await pedido.save();
+    res.status(201).json({ mensagem: "Pedido recebido com sucesso!" });
+  } catch (error) {
+    console.error('Erro ao salvar pedido:', error);
+    res.status(500).json({ erro: "Erro ao salvar pedido" });
+  }
+});
+
+// Nova rota para listar pedidos (admin futuro)
+app.get('/api/pedidos', async (req, res) => {
+  try {
+    const pedidos = await Pedido.find().sort({ data_criacao: -1 });
+    res.json(pedidos);
+  } catch (error) {
+    console.error('Erro ao buscar pedidos:', error);
+    res.status(500).json({ erro: "Erro ao buscar pedidos" });
+  }
+});
 
 mongoose.connect(MONGO_URI)
   .then(() => server.listen(PORT, () => console.log(`Servidor no ar na porta ${PORT}`)))
