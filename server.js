@@ -24,6 +24,20 @@ const Pagamento = mongoose.model('Pagamento', new mongoose.Schema({
   amount: Number,
   date: String
 }));
+const Pedido = mongoose.model('Pedido', new mongoose.Schema({
+  nome: String,
+  telefone: String,
+  email: String,
+  endereco: String,
+  cidade: String,
+  tipoImovel: String,
+  numeroCompartimentos: Number,
+  tipoCamera: [String],
+  microSD: String,
+  transporte: Number,
+  valorEstimado: Number,
+  criadoEm: { type: Date, default: Date.now }
+}));
 
 function verifyToken(req, res, next) {
   const token = req.headers['authorization'];
@@ -50,6 +64,16 @@ app.post('/api/pagamentos', verifyToken, async (req, res) => {
   await pagamento.save();
   io.emit('novo_pagamento', pagamento);
   res.json(pagamento);
+});
+app.post('/api/pedidos', async (req, res) => {
+  try {
+    const pedido = new Pedido(req.body);
+    await pedido.save();
+    res.json({ message: 'Pedido recebido com sucesso!', pedido });
+  } catch (error) {
+    console.error('Erro ao salvar pedido:', error);
+    res.status(500).json({ error: 'Erro ao salvar pedido' });
+  }
 });
 
 app.get('/api/pagamentos', verifyToken, async (req, res) => {
