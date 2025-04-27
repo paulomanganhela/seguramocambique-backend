@@ -17,6 +17,9 @@ const JWT_SECRET = process.env.JWT_SECRET;
 app.use(cors());
 app.use(express.json());
 
+// ---------------------- MODELOS ----------------------
+
+// Modelo de Pagamentos
 const Pagamento = mongoose.model('Pagamento', new mongoose.Schema({
   phone_number: String,
   provider: String,
@@ -24,56 +27,53 @@ const Pagamento = mongoose.model('Pagamento', new mongoose.Schema({
   amount: Number,
   date: String
 }));
+
+// Modelo de Pedidos de Instalação (CORRIGIDO)
 const Pedido = mongoose.model('Pedido', new mongoose.Schema({
   nome: String,
   telefone: String,
   email: String,
-  endereco: String,
   cidade: String,
-  tipoImovel: String,
-  numeroCompartimentos: Number,
-  tipoCamera: [String],
-  microSD: String,
+  bairro: String,
+  tipo_camera: [String],
+  nr_compartimentos: Number,
+  armazenamento: String,
+  valor_estimado: Number,
   transporte: Number,
-  valorEstimado: Number,
-  criadoEm: { type: Date, default: Date.now }
+  data_criacao: { type: Date, default: Date.now }
 }));
+
+// ---------------------- AUTENTICAÇÃO ----------------------
 
 function verifyToken(req, res, next) {
   const token = req.headers['authorization'];
-  if (!token) return res.status(403).send('Token requerido');
+  if (!token) return res.status(403).json({ erro: 'Token requerido' });
   jwt.verify(token.split(' ')[1], JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(403).send('Token inválido');
+    if (err) return res.status(403).json({ erro: 'Token inválido' });
     req.user = decoded;
     next();
   });
 }
 
+// ---------------------- ROTAS ----------------------
+
+// Login
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (username === 'admin' && password === 'Segura333') {
     const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '1d' });
     res.json({ token });
   } else {
-    res.status(401).json({ error: 'Credenciais inválidas' });
+    res.status(401).json({ erro: 'Credenciais inválidas' });
   }
 });
 
+// Pagamentos
 app.post('/api/pagamentos', verifyToken, async (req, res) => {
   const pagamento = new Pagamento({ ...req.body, date: new Date().toISOString() });
   await pagamento.save();
   io.emit('novo_pagamento', pagamento);
   res.json(pagamento);
-});
-app.post('/api/pedidos', async (req, res) => {
-  try {
-    const pedido = new Pedido(req.body);
-    await pedido.save();
-    res.json({ message: 'Pedido recebido com sucesso!', pedido });
-  } catch (error) {
-    console.error('Erro ao salvar pedido:', error);
-    res.status(500).json({ error: 'Erro ao salvar pedido' });
-  }
 });
 
 app.get('/api/pagamentos', verifyToken, async (req, res) => {
@@ -81,24 +81,7 @@ app.get('/api/pagamentos', verifyToken, async (req, res) => {
   res.json(pagamentos);
 });
 
-io.on('connection', (socket) => {
-  console.log('Cliente conectado ao socket');
-});
-// Novo modelo para pedidos de instalação
-const Pedido = mongoose.model('Pedido', new mongoose.Schema({
-  nome: String,
-  telefone: String,
-  tipo_camera: String,
-  quantidade: Number,
-  cidade: String,
-  distancia: String,
-  valor_instalacao: String,
-  valor_transporte: String,
-  total_estimado: String,
-  data_criacao: { type: Date, default: Date.now }
-}));
-
-// Nova rota para receber pedidos
+// Pedidos de Instalação
 app.post('/api/pedidos', async (req, res) => {
   try {
     const pedido = new Pedido(req.body);
@@ -110,7 +93,6 @@ app.post('/api/pedidos', async (req, res) => {
   }
 });
 
-// Nova rota para listar pedidos (admin futuro)
 app.get('/api/pedidos', async (req, res) => {
   try {
     const pedidos = await Pedido.find().sort({ data_criacao: -1 });
@@ -120,6 +102,13 @@ app.get('/api/pedidos', async (req, res) => {
     res.status(500).json({ erro: "Erro ao buscar pedidos" });
   }
 });
+
+// Socket.io para notificações em tempo real
+io.on('connection', (socket) => {
+  console.log('Cliente conectado ao socket');
+});
+
+// ---------------------- INICIAR SERVIDOR ----------------------
 
 mongoose.connect(MONGO_URI)
   .then(() => server.listen(PORT, () => console.log(`Servidor no ar na porta ${PORT}`)))
