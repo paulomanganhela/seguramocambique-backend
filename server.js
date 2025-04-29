@@ -68,6 +68,18 @@ app.post('/api/login', (req, res) => {
   }
 });
 
+// Rota para receber contatos
+app.post('/api/contatos', async (req, res) => {
+  try {
+    const contato = new Contato(req.body);
+    await contato.save();
+    res.status(201).json({ mensagem: "Contato recebido com sucesso!" });
+  } catch (error) {
+    console.error('Erro ao salvar contato:', error);
+    res.status(500).json({ erro: "Erro ao salvar contato" });
+  }
+});
+
 // Pagamentos
 app.post('/api/pagamentos', verifyToken, async (req, res) => {
   const pagamento = new Pagamento({ ...req.body, date: new Date().toISOString() });
@@ -79,6 +91,17 @@ app.post('/api/pagamentos', verifyToken, async (req, res) => {
 app.get('/api/pagamentos', verifyToken, async (req, res) => {
   const pagamentos = await Pagamento.find().sort({ date: -1 });
   res.json(pagamentos);
+});
+
+// Rota para listar contatos
+app.get('/api/contatos', async (req, res) => {
+  try {
+    const contatos = await Contato.find().sort({ data_criacao: -1 });
+    res.json(contatos);
+  } catch (error) {
+    console.error('Erro ao buscar contatos:', error);
+    res.status(500).json({ erro: "Erro ao buscar contatos" });
+  }
 });
 
 // Pedidos de Instalação
@@ -107,6 +130,14 @@ app.get('/api/pedidos', async (req, res) => {
 io.on('connection', (socket) => {
   console.log('Cliente conectado ao socket');
 });
+
+const Contato = mongoose.model('Contato', new mongoose.Schema({
+  nome: String,
+  email: String,
+  telefone: String,
+  mensagem: String,
+  data_criacao: { type: Date, default: Date.now }
+}));
 
 // ---------------------- INICIAR SERVIDOR ----------------------
 
